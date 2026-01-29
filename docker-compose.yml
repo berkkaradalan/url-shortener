@@ -1,0 +1,47 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: url-shortener-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: url_shortener
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - url-shortener-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: url-shortener-app
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - BASE_URL=http://localhost:8000
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DATABASE=url_shortener
+      - MONGODB_USERNAME=admin
+      - MONGODB_PASSWORD=admin123
+      - MONGODB_MAX_RETRIES=5
+      - MONGODB_RETRY_DELAY=3
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - url-shortener-network
+
+networks:
+  url-shortener-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
